@@ -3,15 +3,26 @@ package jobfile
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/dshearer/jobber/common"
 )
 
 const _PROGRAM_RESULT_SINK_NAME = "program"
 
+type ProgramResultSinkStdinMode string
+
+const (
+	ProgramResultSinkStdinModeJSON ProgramResultSinkStdinMode = "json"
+	ProgramResultSinkStdinModeNone ProgramResultSinkStdinMode = "none"
+)
+
 type ProgramResultSink struct {
 	Path                string `yaml:"path"`
 	RunRecFormatVersion SemVer `yaml:"runRecFormatVersion"`
+	Args                []string `yaml:"args"`
+	StdinMode           ProgramResultSinkStdinMode `yaml:"stdinMode"`
+	SuppressIfOutputContains string `yaml:"suppressIfOutputContains"`
 }
 
 func (self ProgramResultSink) CheckParams() error {
@@ -20,6 +31,15 @@ func (self ProgramResultSink) CheckParams() error {
 	}
 	if self.RunRecFormatVersion.IsZero() {
 		self.RunRecFormatVersion = SemVer{Major: 1, Minor: 4}
+	}
+	if self.StdinMode == "" {
+		self.StdinMode = ProgramResultSinkStdinModeJSON
+	}
+	switch self.StdinMode {
+	case ProgramResultSinkStdinModeJSON, ProgramResultSinkStdinModeNone:
+		// ok
+	default:
+		return &common.Error{What: fmt.Sprintf("Invalid stdinMode for program sink: %q", self.StdinMode)}
 	}
 	return nil
 }
@@ -89,8 +109,42 @@ func (self ProgramResultSink) Handle(rec RunRec) {
 		recStr = SerializeRunRec(rec, RESULT_SINK_DATA_STDOUT|RESULT_SINK_DATA_STDERR)
 	}
 
+	// optional suppression: useful for "no-op" jobs that exit 0 but shouldn't notify
+	if self.SuppressIfOutputContains != "" {
+		needle := self.SuppressIfOutputContains
+		if strings.Contains(string(rec.Stdout), needle) || strings.Contains(string(rec.Stderr), needle) {
+			return
+		}
+	}
+
+	// build argv (supports simple placeholder expansion in args)
+	argv := []string{self.Path}
+	for _, a := range self.Args {
+		a = strings.ReplaceAll(a, "${job.name}", rec.Job.Name)
+		a = strings.ReplaceAll(a, "${job.command}", rec.Job.Cmd)
+		a = strings.ReplaceAll(a, "${job.time}", rec.Job.FullTimeSpec.String())
+		a = strings.ReplaceAll(a, "${job.status}", rec.NewStatus.String())
+		a = strings.ReplaceAll(a, "${fate}", rec.Fate.String())
+		if rec.Fate == common.SubprocFateSucceeded {
+			a = strings.ReplaceAll(a, "${succeeded}", "true")
+		} else {
+			a = strings.ReplaceAll(a, "${succeeded}", "false")
+		}
+		a = strings.ReplaceAll(a, "${stdout}", string(rec.Stdout))
+		a = strings.ReplaceAll(a, "${stderr}", string(rec.Stderr))
+		argv = append(argv, a)
+	}
+
+	var stdin []byte
+	switch self.StdinMode {
+	case ProgramResultSinkStdinModeNone:
+		stdin = nil
+	default:
+		stdin = recStr
+	}
+
 	// call program
-	execResult, err2 := common.ExecAndWait([]string{self.Path}, recStr)
+	execResult, err2 := common.ExecAndWait(argv, stdin)
 	defer execResult.Close()
 	if err2 != nil {
 		common.ErrLogger.Printf("Failed to call %v: %v\n", self.Path, err2)

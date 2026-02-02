@@ -44,6 +44,7 @@ type Job struct {
 	NotifyOnError   []ResultSink
 	NotifyOnFailure []ResultSink
 	NotifyOnSuccess []ResultSink
+	NotifyOnNoop    []ResultSink
 
 	// backoff after errors
 	backoffLevel int
@@ -99,6 +100,9 @@ func (rec *RunRec) Describe() string {
 	switch rec.Fate {
 	case common.SubprocFateSucceeded:
 		summary = fmt.Sprintf("Job \"%v\" succeeded.", rec.Job.Name)
+		break
+	case common.SubprocFateNoop:
+		summary = fmt.Sprintf("Job \"%v\" did nothing.", rec.Job.Name)
 		break
 	case common.SubprocFateFailed:
 		summary = fmt.Sprintf("Job \"%v\" failed.", rec.Job.Name)

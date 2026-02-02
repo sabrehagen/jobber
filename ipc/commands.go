@@ -45,6 +45,7 @@ type JobDesc struct {
 	NotifyOnSuccess string     `json:"notifyOnSuccess"`
 	NotifyOnErr     string     `json:"notifyOnError"`
 	NotifyOnFail    string     `json:"notifyOnFailure"`
+	NotifyOnNoop    string     `json:"notifyOnNoop"`
 	ErrHandler      string     `json:"errHandler"`
 }
 

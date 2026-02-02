@@ -68,6 +68,9 @@ jobs:
   #    notifyOnError: [*programSink]  # what to do with result when job has an error
   #    notifyOnFailure: [*systemEmailSink, *programSink]  # what to do with result when the job stops due to errors
   #    notifyOnSuccess: [*filesystemSink]  # what to do with result when the job succeeds
+  #    # If your job can legitimately do nothing, have it exit with code 200.
+  #    # You can then configure notifications for that state separately:
+  #    notifyOnNoop: [*programSink]  # what to do when the job exits with code 200 (no-op)
 `
 
 func (self *JobManager) doInitCmd(cmd ipc.InitCmd) ipc.ICmdResp {

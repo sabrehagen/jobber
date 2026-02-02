@@ -35,6 +35,7 @@ func (self *JobManager) doListJobsCmd(cmd ipc.ListJobsCmd) ipc.ICmdResp {
 			NotifyOnSuccess: resultSinksString(j.NotifyOnSuccess),
 			NotifyOnErr:     resultSinksString(j.NotifyOnError),
 			NotifyOnFail:    resultSinksString(j.NotifyOnFailure),
+			NotifyOnNoop:    resultSinksString(j.NotifyOnNoop),
 			ErrHandler:      j.ErrorHandler.String(),
 		}
 		if j.Paused {

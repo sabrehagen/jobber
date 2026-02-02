@@ -217,6 +217,8 @@ func (self *JobManager) handleRunRec(rec *jobfile.RunRec) {
 		sinksToNotify = append(sinksToNotify, rec.Job.NotifyOnSuccess...)
 	} else if rec.Fate == common.SubprocFateFailed {
 		sinksToNotify = append(sinksToNotify, rec.Job.NotifyOnError...)
+	} else if rec.Fate == common.SubprocFateNoop {
+		sinksToNotify = append(sinksToNotify, rec.Job.NotifyOnNoop...)
 	}
 	if rec.NewStatus == jobfile.JobFailed {
 		sinksToNotify = append(sinksToNotify, rec.Job.NotifyOnFailure...)

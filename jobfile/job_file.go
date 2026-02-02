@@ -90,6 +90,7 @@ type JobV3Raw struct {
 	NotifyOnSuccess []ResultSinkRaw `json:"notifyOnSuccess" yaml:"notifyOnSuccess"`
 	NotifyOnError   []ResultSinkRaw `json:"notifyOnError" yaml:"notifyOnError"`
 	NotifyOnFailure []ResultSinkRaw `json:"notifyOnFailure" yaml:"notifyOnFailure"`
+	NotifyOnNoop    []ResultSinkRaw `json:"notifyOnNoop" yaml:"notifyOnNoop"`
 }
 
 type JobV1V2Raw struct {
@@ -141,6 +142,7 @@ func (self *JobFileV3Raw) Activate(usr *user.User) (*JobFile, error) {
 		sinks = append(sinks, job.NotifyOnError...)
 		sinks = append(sinks, job.NotifyOnFailure...)
 		sinks = append(sinks, job.NotifyOnSuccess...)
+		sinks = append(sinks, job.NotifyOnNoop...)
 	}
 
 	/*
@@ -639,6 +641,16 @@ func (self JobV3Raw) ToJob(usr *user.User, dest *Job) error {
 		dest.NotifyOnSuccess = append(dest.NotifyOnSuccess, sink)
 	}
 	dest.NotifyOnSuccess = normalizeResultSinkArray(dest.NotifyOnSuccess)
+
+	// handle NotifyOnNoop
+	for _, sinkRaw := range self.NotifyOnNoop {
+		sink, err := MakeResultSinkFromConfig(sinkRaw)
+		if err != nil {
+			return err
+		}
+		dest.NotifyOnNoop = append(dest.NotifyOnNoop, sink)
+	}
+	dest.NotifyOnNoop = normalizeResultSinkArray(dest.NotifyOnNoop)
 
 	// parse time spec
 	tmp, err := ParseFullTimeSpec(self.Time)

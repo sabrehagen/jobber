@@ -2,6 +2,8 @@ package common
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -21,6 +23,7 @@ const (
 	SubprocFateSucceeded SubprocFate = iota
 	SubprocFateFailed    SubprocFate = iota
 	SubprocFateCancelled SubprocFate = iota
+	SubprocFateNoop      SubprocFate = iota
 )
 
 func (self SubprocFate) String() string {
@@ -31,10 +34,17 @@ func (self SubprocFate) String() string {
 		return "failed"
 	case SubprocFateCancelled:
 		return "cancelled"
+	case SubprocFateNoop:
+		return "noop"
 	default:
 		panic("Unhandled SubprocFate value")
 	}
 }
+
+// Jobber convention: a subprocess exit code of 200 means "no-op" (neither success nor error).
+// This is useful for idempotent jobs that frequently have nothing to do and should not trigger
+// notifyOnSuccess/notifyOnError.
+const JobberExitNoop = 200
 
 // An ExecResult describes the result of running a subprocess via ExecAndWait.
 // Stdout and Stderr can be used to get the subprocess's stdout and stderr.
@@ -44,6 +54,15 @@ type ExecResult struct {
 	Stdout io.ReadSeeker
 	Stderr io.ReadSeeker
 	Fate   SubprocFate
+}
+
+// MakeRunID generates a unique, opaque run identifier suitable for passing to job subprocesses.
+func MakeRunID() (string, error) {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b[:]), nil
 }
 
 func (self *ExecResult) Close() {
@@ -92,7 +111,7 @@ func Sudo(usr user.User, cmdStr string) *exec.Cmd {
 	return su_cmd(usr.Username, cmdStr, "/bin/sh")
 }
 
-func ExecAndWaitContext(ctx context.Context, args []string, input []byte) (*ExecResult, error) {
+func ExecAndWaitContextWithEnv(ctx context.Context, args []string, input []byte, env []string) (*ExecResult, error) {
 	var cmd *exec.Cmd
 	var newCtx context.Context
 	var cancelSubproc context.CancelFunc
@@ -102,6 +121,9 @@ func ExecAndWaitContext(ctx context.Context, args []string, input []byte) (*Exec
 		newCtx, cancelSubproc = context.WithCancel(context.Background())
 		defer cancelSubproc()
 		cmd = exec.CommandContext(newCtx, args[0], args[1:]...)
+	}
+	if env != nil {
+		cmd.Env = env
 	}
 
 	// make temp files for stdout/stderr
@@ -181,9 +203,23 @@ func ExecAndWaitContext(ctx context.Context, args []string, input []byte) (*Exec
 	} else if didCancel {
 		res.Fate = SubprocFateCancelled
 	} else {
-		res.Fate = SubprocFateFailed
+		// Distinguish "no-op" from "failed" based on a reserved exit code.
+		// Only applies to ExitError; other errors are handled above.
+		if exitErr, ok := waitErr.(*exec.ExitError); ok {
+			if exitErr.ProcessState != nil && exitErr.ProcessState.ExitCode() == JobberExitNoop {
+				res.Fate = SubprocFateNoop
+			} else {
+				res.Fate = SubprocFateFailed
+			}
+		} else {
+			res.Fate = SubprocFateFailed
+		}
 	}
 	return res, nil
+}
+
+func ExecAndWaitContext(ctx context.Context, args []string, input []byte) (*ExecResult, error) {
+	return ExecAndWaitContextWithEnv(ctx, args, input, nil)
 }
 
 func ExecAndWait(args []string, input []byte) (*ExecResult, error) {

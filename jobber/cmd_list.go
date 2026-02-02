@@ -41,6 +41,7 @@ func formatResponseRecs(recs []ListRespRec, showUser bool) string {
 		"NOTIFY ON SUCCESS",
 		"NOTIFY ON ERR",
 		"NOTIFY ON FAIL",
+		"NOTIFY ON NOOP",
 		"ERR HANDLER",
 	}
 	if showUser {
@@ -61,6 +62,7 @@ func formatResponseRecs(recs []ListRespRec, showUser bool) string {
 				fmt.Sprintf("%v", j.NotifyOnSuccess),
 				fmt.Sprintf("%v", j.NotifyOnErr),
 				fmt.Sprintf("%v", j.NotifyOnFail),
+				fmt.Sprintf("%v", j.NotifyOnNoop),
 				j.ErrHandler,
 			}
 			if showUser {

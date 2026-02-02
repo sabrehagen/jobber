@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"os"
 	"sync"
 	"time"
 
@@ -116,9 +117,17 @@ func RunJob(
 	rec := &jobfile.RunRec{Job: job, RunTime: time.Now()}
 
 	// run
+	runID, err := common.MakeRunID()
+	if err != nil {
+		common.ErrLogger.Printf("Failed to generate JOBBER_RUN_ID: %v\n", err)
+		rec.Err = err
+		return rec
+	}
+	env := append(os.Environ(), "JOBBER_RUN_ID="+runID)
+
 	var execResult *common.ExecResult
-	execResult, err :=
-		common.ExecAndWaitContext(ctx, []string{shell, "-c", job.Cmd}, nil)
+	execResult, err =
+		common.ExecAndWaitContextWithEnv(ctx, []string{shell, "-c", job.Cmd}, nil, env)
 
 	if err != nil {
 		/* unexpected error while trying to run job */
@@ -154,6 +163,10 @@ func RunJob(
 	// update job
 	switch execResult.Fate {
 	case common.SubprocFateSucceeded:
+		job.Status = jobfile.JobGood
+		break
+	case common.SubprocFateNoop:
+		// no-op is not a failure and should not affect job status
 		job.Status = jobfile.JobGood
 		break
 	case common.SubprocFateFailed:

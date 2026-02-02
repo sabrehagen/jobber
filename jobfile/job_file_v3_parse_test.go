@@ -41,6 +41,7 @@ jobs:
     notifyOnError: [*programSink]
     notifyOnFailure: [*sysEmailSink]
     notifyOnSuccess: [*sysEmailSink]
+    notifyOnNoop: [*programSink]
 
 # So many comments...
 `
@@ -66,6 +67,7 @@ var gV3JobFile = JobFile{
 			NotifyOnError:   []ResultSink{ProgramResultSink{Path: "/my/program.sh"}},
 			NotifyOnFailure: []ResultSink{SystemEmailResultSink{}},
 			NotifyOnSuccess: []ResultSink{SystemEmailResultSink{}},
+			NotifyOnNoop:    []ResultSink{ProgramResultSink{Path: "/my/program.sh"}},
 		},
 	},
 }
