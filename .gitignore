@@ -1,10 +1,15 @@
 bin
 buildtools/gen
 buildtools/gotools/tools-gopls-v0.3.4
+*.buildinfo
+*.changes
+*.deb
+*.dsc
 *.rpm
 *.tar
+*.tar.gz
+*.tar.xz
 *.tgz
-*.deb
 work
 testlog.txt
 test_report
