@@ -17,4 +17,4 @@ results
 *.pyo
 *cloudimg-console.log
 mk/config.mk
-debian/
+/debian/

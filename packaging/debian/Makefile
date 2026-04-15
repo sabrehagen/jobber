@@ -16,6 +16,7 @@ pkg-local : ${WORK_DIR}/${SRC_TARBALL}
 	rm -rf "${WORK_DIR}"
 	cd "${SRC_ROOT}" && dpkg-buildpackage -us -uc
 	mkdir -p "${DESTDIR}/"
-	mv "${SRC_ROOT}"/../*.deb "${DESTDIR}/"
+	mv "${SRC_ROOT}"/../jobber_* "${SRC_ROOT}/"
+	mv "${SRC_ROOT}"/*.deb "${DESTDIR}/"
 
 include ../tail.mk
